@@ -2,49 +2,20 @@ package main
 
 import (
 	"fmt"
-	"strings"
-
-	"github.com/xeipuuv/gojsonschema"
+	"io/ioutil"
+	"net/http"
 )
 
 func main() {
-	schemaURI := "https://json.schemastore.org/github-issue-forms.json"
-	jsonInput := []byte(`{
-		"name": "This is a name",
-		"description": "This is a description, man",
-		"body": [{ "type": "markdown", "attributes": { "value": "val1" } }]
-	}`)
-
-	fmt.Println("execute validation")
-	err := validateJSONSchema(jsonInput, schemaURI)
+	res, err := http.Get("https://json-schema.org/draft/2020-12/schema")
 	if err != nil {
+		fmt.Println(fmt.Errorf("failed get https url: %w", err))
 		panic(err)
 	}
-	fmt.Println("finish validation")
-}
-
-// ValidateJSONSchema performs the JSON Schema validation: https://json-schema.org/
-// This fetches the schema definition via http(s) or local filesystem.
-// If jsonInput is not a valid JSON or if jsonInput doesn't conform to the desired JSON schema, an error is returned.
-//
-// TODO: accept io.Reader instead of []byte
-func validateJSONSchema(jsonInput []byte, desiredSchemaURI string) error {
-	schemaLoader := gojsonschema.NewReferenceLoader(desiredSchemaURI)
-	docLoader := gojsonschema.NewBytesLoader(jsonInput)
-
-	result, err := gojsonschema.Validate(schemaLoader, docLoader)
+	body, err := ioutil.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to validate JSON schema: %w", err)
+		fmt.Println(fmt.Errorf("failed read body: %w", err))
+		panic(err)
 	}
-
-	if !result.Valid() {
-		var sb strings.Builder
-		for _, err := range result.Errors() {
-			sb.WriteString("\n\t")
-			sb.WriteString(err.String())
-		}
-		return fmt.Errorf("JSON doc doesn't conform to the desired JSON schema: %s", sb.String())
-	}
-
-	return nil
+	fmt.Println(string(body))
 }
